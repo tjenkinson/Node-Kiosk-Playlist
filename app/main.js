@@ -94,7 +94,7 @@ function createCandidateFromMediaItem(mediaItem) {
 	var chosenUrl = null;
 	for (var j=0; j<qualityIds.length && chosenUrl === null; j++) {
 		var proposedQualityId = qualityIds[j];
-		if ($.inArray(proposedQualityId, availableQualityIds) !== -1) {
+		if (availableQualityIds.indexOf(proposedQualityId) !== -1) {
 			// find the url for the mp4 encoded version
 			for (var k=0; k<mediaItem.urlData.length && chosenUrl === null; k++) {
 				var item = mediaItem.urlData[k];

@@ -20,7 +20,8 @@ var queue = [];
 initialise();
 
 function initialise() {
-	apiRequest("permissions", function(permissions) {
+	apiRequest("permissions", function(data) {
+		var permissions = data.data;
 		if (!permissions.vodUris) {
 			console.error("Do not have \"vodUris\" api permission.");
 			process.exit(1);

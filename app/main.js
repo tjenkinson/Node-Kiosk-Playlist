@@ -83,24 +83,25 @@ function liveStreamCheck() {
 			}
 			
 			var candidate = createCandidateFromMediaItem(mediaItem, "stream");
-			if (newCandidate === null) {
-				newCandidate = candidate;
-			}
-			if (currentCandidate.type === "stream" && candidate.url === currentCandidate.url) {
+			if (currentCandidate !== null && currentCandidate.type === "stream" && candidate.url === currentCandidate.url) {
 				foundLiveMediaItem = true;
 				break;
 			}
+			if (newCandidate === null) {
+				newCandidate = candidate;
+			}
 		}
 		
-		if (!foundLiveMediaItem && newCandidate !== null) {
-			// queue the live stream and switch to it
-			console.log("Queueing live stream to play on next switch.");
-			queuedCandidate = newCandidate;
-			loadNextItem();
-		}
-		else if (!foundLiveMediaItem && currentCandidate.type === "live") {
-			// stream has ended
-			console.log("Live stream has ended so loading next item.");
+		if (!foundLiveMediaItem)
+			if (newCandidate !== null) {
+				// queue the live stream and switch to it
+				console.log("Queueing live stream to play on next switch.");
+				queuedCandidate = newCandidate;
+			}
+			else if (currentCandidate.type === "live") {
+				// stream has ended
+				console.log("Live stream has ended so loading next item.");
+			}
 			loadNextItem();
 		}
 		

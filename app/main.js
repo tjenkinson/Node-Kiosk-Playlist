@@ -266,7 +266,12 @@ function playItem(url, type) {
 	
 	// play item
 	handle = spawn("omxplayer", commandArgs);
+	var closeEventHandled = false;
 	handle.on("close", function() {
+		if (closeEventHandled) {
+			return;
+		}
+		closeEventHandled = true;
 		handle = null;
 		currentCandidate = null;
 		killSent = false;

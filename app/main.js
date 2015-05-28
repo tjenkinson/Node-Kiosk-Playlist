@@ -28,6 +28,7 @@ var currentCandidate = null;
 initialise();
 
 function initialise() {
+	killAllPlayers();
 	apiRequest("permissions", function(data) {
 		var permissions = data.data;
 		if (!permissions.vodUris) {
@@ -273,7 +274,11 @@ function killPlayer() {
 	if (killSent) {
 		return;
 	}
-	killSent = true;	
+	killSent = true;
+	killAllPlayers();
+}
+
+function killAllPlayers() {
 	exec('pkill omxplayer', function(err, stdout, stderr) {
 		if (err) {
 			throw err;

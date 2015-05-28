@@ -98,12 +98,13 @@ function liveStreamCheck() {
 				// queue the live stream and switch to it
 				console.log("Queueing live stream to play on next switch.");
 				queuedCandidate = newCandidate;
+				loadNextItem();
 			}
 			else if (currentCandidate.type === "live") {
 				// stream has ended
 				console.log("Live stream has ended so loading next item.");
+				loadNextItem();
 			}
-			loadNextItem();
 		}
 		
 		setTimeout(liveStreamCheck, 5000);

@@ -162,10 +162,10 @@ function loadNextItem() {
 }
 
 function loadMediaItem(mediaItem, url) {
-	console.log("Loading media item.", mediaItem);
+	console.log("Loading media item.");
 	
 	// play item
-	var handle = exec("omxplayer "+url, function(error, stdout, stderr) {
+	var handle = exec("omxplayer -b "+url, function(error, stdout, stderr) {
 		onVideoEnded();
 	});
 }

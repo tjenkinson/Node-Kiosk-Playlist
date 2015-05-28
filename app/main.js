@@ -32,7 +32,7 @@ function initialise() {
 
 function apiRequest(url, callback) {
 	console.log("Making api request.", url);
-	request.get({
+	request({
 		url: apiBaseUrl+"/"+url,
 		headers: {
 			"X-Api-Key": apiKey

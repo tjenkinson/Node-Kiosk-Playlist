@@ -6,6 +6,7 @@ if (process.argv.length < 5) { // first element in array is "node", second is pa
 var apiBaseUrl = "https://www.la1tv.co.uk/api/v1";
 
 var request = require('request');
+var spawn = require('child_process').spawn;
 var exec = require('child_process').exec;
 
 var apiKey = process.argv[2];
@@ -13,9 +14,16 @@ var qualityIds = process.argv[3].split(",").map(function(a){return parseInt(a);}
 var randomise = process.argv[4] === "1";
 var playlistId = process.argv.length > 5 ? process.argv[5] : null;
 
-// array of {mediaItem, url}
+// array of {mediaItem, url, type}
 // items at the front of the array are popped off and played
 var queue = [];
+var handle = null;
+var killSent = false;
+
+// if set this candidate should play next
+var queuedCandidate = null;
+// the candidate that's currently playing
+var currentCandidate = null;
 
 initialise();
 
@@ -26,7 +34,14 @@ function initialise() {
 			console.error("Do not have \"vodUris\" api permission.");
 			process.exit(1);
 		}
+		else if (!permissions.streamUris && playlistId === null) {
+			console.error("Do not have \"streamUris\" api permission.");
+			process.exit(1);
+		}
 		console.log("Initialised!");
+		if (playlistId === null) {
+			setTimeout(liveStreamCheck, 5000);
+		}
 		loadNextItem();
 	});
 }
@@ -52,6 +67,47 @@ function apiRequest(url, callback) {
 	});
 }
 
+// check if something's live, and if it is add it to the front of the queue and switch to it.
+function liveStreamCheck() {
+	console.log("Checking for live streams.");
+	var requestUrl = "mediaItems?sortMode=SCHEDULED_PUBLISH_TIME&sortDirection=DESC&streamIncludeSetting=HAS_LIVE_STREAM&limit=10";
+	apiRequest(requestUrl, function(data) {
+		var mediaItems = data.data.mediaItems;
+		var foundLiveMediaItem = false;
+		var newCandidate = null;
+		
+		for(var i=0; i<mediaItems.length; i++) {
+			var mediaItem = mediaItems[i];
+			if (mediaItem.liveStream === null || mediaItem.liveStream.state !== "LIVE") {
+				continue;
+			}
+			
+			var candidate = createCandidateFromMediaItem(mediaItem, "stream");
+			if (newCandidate === null) {
+				newCandidate = candidate;
+			}
+			if (currentCandidate.type === "stream" && candidate.url === currentCandidate.url) {
+				foundLiveMediaItem = true;
+				break;
+			}
+		}
+		
+		if (!foundLiveMediaItem && newCandidate !== null) {
+			// queue the live stream and switch to it
+			console.log("Queueing live stream to play on next switch.");
+			queuedCandidate = newCandidate;
+			loadNextItem();
+		}
+		else if (!foundLiveMediaItem && currentCandidate.type === "live") {
+			// stream has ended
+			console.log("Live stream has ended so loading next item.");
+			loadNextItem();
+		}
+		
+		setTimeout(liveStreamCheck, 5000);
+	});
+}
+
 // populate the queue with items
 function refillQueue(callback) {
 	var requestUrl = playlistId !== null ? "playlists/"+playlistId+"/mediaItems" : "mediaItems?sortMode=SCHEDULED_PUBLISH_TIME&sortDirection=DESC&vodIncludeSetting=HAS_AVAILABLE_VOD&limit=25";
@@ -62,7 +118,7 @@ function refillQueue(callback) {
 		var candidates = [];
 		for (var i=0; i<mediaItems.length; i++) {
 			var mediaItem = mediaItems[i];
-			var candidate = createCandidateFromMediaItem(mediaItem);
+			var candidate = createCandidateFromMediaItem(mediaItem, "video");
 			
 			if (candidate !== null) {
 				candidates.push(candidate);
@@ -79,29 +135,39 @@ function refillQueue(callback) {
 	});
 }
 
-function isMediaItemValid(mediaItem) {
-	return mediaItem.vod !== null && mediaItem.vod.available;
+function isMediaItemValid(mediaItem, type) {
+	if (type !== "video" && type !== "stream") {
+		throw "Invalid item type.";
+	}
+	return type === "video" ? mediaItem.vod !== null && mediaItem.vod.available : mediaItem.liveStream !== null && mediaItem.liveStream.state === "LIVE";
 }
 
-function createCandidateFromMediaItem(mediaItem) {
-	if (!isMediaItemValid(mediaItem)) {
+function createCandidateFromMediaItem(mediaItem, type) {
+	if (type !== "video" && type !== "stream") {
+		throw "Invalid item type.";
+	}
+	
+	if (!isMediaItemValid(mediaItem, type)) {
 		return null;
 	}
+	
+	var mediaItemPart = type === "video" ? mediaItem.vod : mediaItem.liveStream;
+	
 	var availableQualityIds = [];
-	for (var j=0; j<mediaItem.vod.qualities.length; j++) {
-		availableQualityIds.push(mediaItem.vod.qualities[j].id);
+	for (var j=0; j<mediaItemPart.qualities.length; j++) {
+		availableQualityIds.push(mediaItemPart.qualities[j].id);
 	}
 	var chosenUrl = null;
 	for (var j=0; j<qualityIds.length && chosenUrl === null; j++) {
 		var proposedQualityId = qualityIds[j];
 		if (availableQualityIds.indexOf(proposedQualityId) !== -1) {
 			// find the url for the mp4 encoded version
-			for (var k=0; k<mediaItem.vod.urlData.length && chosenUrl === null; k++) {
-				var item = mediaItem.vod.urlData[k];
+			for (var k=0; k<mediaItemPart.urlData.length && chosenUrl === null; k++) {
+				var item = mediaItemPart.urlData[k];
 				if (item.quality.id === proposedQualityId) {
 					for(var j=0; j<item.urls.length; j++) {
 						var urlInfo = item.urls[j];
-						if (urlInfo.type === "video/mp4") {
+						if ((type === "video" && urlInfo.type === "video/mp4") || (type === "stream" && urlInfo.type === "application/x-mpegURL")) {
 							chosenUrl = urlInfo.url;
 							break;
 						}
@@ -117,7 +183,8 @@ function createCandidateFromMediaItem(mediaItem) {
 	
 	return {
 		mediaItem: mediaItem,
-		url: chosenUrl
+		url: chosenUrl,
+		type: type
 	};
 }
 
@@ -133,49 +200,85 @@ function fillQueueIfNecessary(callback) {
 
 // get the next item off the queue and play it
 function loadNextItem() {
+	if (currentCandidate !== null) {
+		// loadNextItem will be called again when the player is killed
+		killPlayer();
+		return;
+	}
+	
 	console.log("Loading next item...");
 	fillQueueIfNecessary(function() {
-		if (queue.length === 0) {
-			console.log("Nothing to switch to, queue is empty. Trying again shortly.");
-			setTimeout(function() {
-				loadNextItem();
-			}, 5000);
-			return;
+		
+		var candidate = null;
+		
+		if (queuedCandidate !== null) {
+			// there is one set to play next so pick that one
+			candidate = queuedCandidate;
+			queuedCandidate = null;
 		}
-		candidate = queue.shift();
+		else {
+			if (queue.length === 0) {
+				console.log("Nothing to switch to, queue is empty. Trying again shortly.");
+				setTimeout(function() {
+					loadNextItem();
+				}, 5000);
+				return;
+			}
+			candidate = queue.shift();
+		}
 		
 		// check this candidate is still available and valid
 		var requestUrl = playlistId !== null ? "playlists/"+playlistId+"/mediaItems/"+candidate.mediaItem.id : "mediaItems/"+candidate.mediaItem.id;
 		apiRequest(requestUrl, function(data) {
 			console.log("Checking next item is still a valid option.");
 			var mediaItem = playlistId !== null ? data.data : data.data.mediaItem;
-			if (!isMediaItemValid(mediaItem)) {
+			if (!isMediaItemValid(mediaItem, candidate.type)) {
 				console.log("Item no longer valid. Skipping...");
 				loadNextItem();
 			}
 			else {
 				console.log("Item valid.");
-				loadMediaItem(candidate.mediaItem, candidate.url);
+				currentCandidate = candidate;
+				playItem(candidate.url, candidate.type);
 			}
 		});
 	});
 }
 
-function loadMediaItem(mediaItem, url) {
-	console.log("Loading media item.");
+function playItem(url, type) {
+	console.log("Loading item.", url);
+	var commandArgs = null;
+	if (type === "video") {
+		commandArgs = ["-b" , url];
+	}
+	else if (type === "stream") {
+		commandArgs = ["-b" , "--live", url]
+	}
+	else {
+		throw "Invalid item type.";
+	}
 	
 	// play item
-	var handle = exec("omxplayer -b "+url, function(error, stdout, stderr) {
-		onVideoEnded();
+	handle = spawn("omxplayer", commandArgs);
+	handle.on("close", function() {
+		handle = null;
+		currentCandidate = null;
+		killSent = false;
+		loadNextItem();
 	});
 }
 
-function onVideoEnded() {
-	console.log("Video ended. Moving on.");
-	loadNextItem();
+function killPlayer() {
+	if (killSent) {
+		return;
+	}
+	killSent = true;	
+	exec('pkill omxplayer', function(err, stdout, stderr) {
+		if (err) {
+			throw err;
+		}
+	});
 }
-
-
 
 function shuffle(array) {
   var currentIndex = array.length, temporaryValue, randomIndex ;

@@ -1,4 +1,4 @@
-if (process.argv.length < 3) {
+if (process.argv.length < 4) { // first element in array is "node"
 	console.error("You need the following parameters: apiKey qualityIds randomise (playlistId)");
 	process.exit(1);
 }
@@ -8,10 +8,10 @@ var apiBaseUrl = "https://www.la1tv.co.uk/api/v1";
 var request = require('request');
 var exec = require('child_process').exec;
 
-var apiKey = process.argv[0];
-var qualityIds = process.argv[1].split(",").map(function(a){return parseInt(a);});
-var randomise = process.argv[2] === "1";
-var playlistId = process.argv.length > 3 ? process.argv[3] : null;
+var apiKey = process.argv[1];
+var qualityIds = process.argv[2].split(",").map(function(a){return parseInt(a);});
+var randomise = process.argv[3] === "1";
+var playlistId = process.argv.length > 4 ? process.argv[4] : null;
 
 // array of {mediaItem, url}
 // items at the front of the array are popped off and played

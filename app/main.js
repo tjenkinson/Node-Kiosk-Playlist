@@ -28,7 +28,7 @@ var currentCandidate = null;
 initialise();
 
 function initialise() {
-	killAllPlayers();
+	killPlayer();
 	apiRequest("permissions", function(data) {
 		var permissions = data.data;
 		if (!permissions.vodUris) {
@@ -92,7 +92,6 @@ function liveStreamCheck() {
 				newCandidate = candidate;
 			}
 		}
-		
 		if (!foundLiveMediaItem) {
 			if (newCandidate !== null) {
 				// queue the live stream and switch to it
@@ -100,7 +99,7 @@ function liveStreamCheck() {
 				queuedCandidate = newCandidate;
 				loadNextItem();
 			}
-			else if (currentCandidate.type === "live") {
+			else if (currentCandidate !== null && currentCandidate.type === "stream") {
 				// stream has ended
 				console.log("Live stream has ended so loading next item.");
 				loadNextItem();
@@ -205,6 +204,10 @@ function fillQueueIfNecessary(callback) {
 function loadNextItem() {
 	if (currentCandidate !== null) {
 		// loadNextItem will be called again when the player is killed
+		if (killSent) {
+			return;
+		}
+		killSent = true;
 		killPlayer();
 		return;
 	}
@@ -267,24 +270,13 @@ function playItem(url, type) {
 		handle = null;
 		currentCandidate = null;
 		killSent = false;
+		killPlayer(); // just to be certain
 		loadNextItem();
 	});
 }
 
 function killPlayer() {
-	if (killSent) {
-		return;
-	}
-	killSent = true;
-	killAllPlayers();
-}
-
-function killAllPlayers() {
-	exec('pkill omxplayer', function(err, stdout, stderr) {
-		if (err) {
-			throw err;
-		}
-	});
+	exec('pkill omxplayer');
 }
 
 function shuffle(array) {

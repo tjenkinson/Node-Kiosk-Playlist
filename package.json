@@ -1,0 +1,23 @@
+{
+    "name" : "Node-Kiosk-Playlist",
+    "version" : "0.0.1",
+    "description" : "A nodejs app which uses the website api to loop through items in a playlist full screen without user interaction.",
+    "main" : "./app/main.js",
+    "keywords" : [
+        
+    ],
+    "repository" : {
+        "type" : "git",
+        "url" : "https://github.com/LA1TV/Node-Kiosk-Playlist.git"
+    },
+    "dependencies" : {
+        "request": "request/request"
+    },
+    "engine" : {
+        "node" : ">=0.6.0"
+    },
+    "author" : {
+        "name" : "Tom Jenkinson",
+        "email" : "tjcode@outlook.com"
+    }
+}

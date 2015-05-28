@@ -96,8 +96,8 @@ function createCandidateFromMediaItem(mediaItem) {
 		var proposedQualityId = qualityIds[j];
 		if (availableQualityIds.indexOf(proposedQualityId) !== -1) {
 			// find the url for the mp4 encoded version
-			for (var k=0; k<mediaItem.urlData.length && chosenUrl === null; k++) {
-				var item = mediaItem.urlData[k];
+			for (var k=0; k<mediaItem.vod.urlData.length && chosenUrl === null; k++) {
+				var item = mediaItem.vod.urlData[k];
 				if (item.quality.id === proposedQualityId) {
 					for(var j=0; j<item.urls.length; j++) {
 						var urlInfo = item.urls[j];

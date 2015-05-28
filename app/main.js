@@ -92,7 +92,7 @@ function liveStreamCheck() {
 			}
 		}
 		
-		if (!foundLiveMediaItem)
+		if (!foundLiveMediaItem) {
 			if (newCandidate !== null) {
 				// queue the live stream and switch to it
 				console.log("Queueing live stream to play on next switch.");

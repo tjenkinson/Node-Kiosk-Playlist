@@ -42,7 +42,7 @@ function initialise() {
 		}
 		console.log("Initialised!");
 		if (playlistId === null) {
-			setTimeout(liveStreamCheck, 5000);
+			liveStreamCheck();
 		}
 		loadNextItem();
 	});

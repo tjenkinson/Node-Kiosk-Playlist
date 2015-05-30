@@ -55,10 +55,14 @@ function apiRequest(url, callback) {
 		headers: {
 			"X-Api-Key": apiKey
 		}
-	}, function (error, response, body) {
+	}, function(error, response, body) {
 		if (!error && response.statusCode == 200) {
 			console.log("Api request completed.");
 			callback(JSON.parse(body));
+		}
+		else if (!error && response.statusCode == 404) {
+			console.log("Api request completed but a 404 was returned.");
+			callback(null);
 		}
 		else {
 			console.log("Error making request to api. Retrying shortly.");
@@ -273,10 +277,12 @@ function loadCandidate(candidate) {
 				else {
 					liveCandidate = null;
 					updatingPlayer = false;
-					
 					console.log("Checking next item is still a valid option.");
-					var mediaItem = playlistId !== null ? data.data : data.data.mediaItem;
-					if (!isMediaItemValid(mediaItem, candidate.type)) {
+					var mediaItem = null;
+					if (data !== null) {
+						mediaItem = playlistId !== null ? data.data : data.data.mediaItem;
+					}
+					if (mediaItem === null || !isMediaItemValid(mediaItem, candidate.type)) {
 						console.log("Item no longer valid.");
 						loadNextItem();
 					}

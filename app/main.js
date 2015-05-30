@@ -18,12 +18,13 @@ var playlistId = process.argv.length > 5 ? process.argv[5] : null;
 // items at the front of the array are popped off and played
 var queue = [];
 var handle = null;
-var killSent = false;
+var playerProcessCloseCallback = null;
 
-// if set this candidate should play next
-var queuedCandidate = null;
-// the candidate that's currently playing
-var currentCandidate = null;
+// the candidate that's currently playing/loading to play
+var liveCandidate = null;
+var liveCandidate = null;
+var updatingPlayer = false;
+var refillingQueue = false;
 
 initialise();
 
@@ -84,7 +85,7 @@ function liveStreamCheck() {
 			}
 			
 			var candidate = createCandidateFromMediaItem(mediaItem, "stream");
-			if (currentCandidate !== null && currentCandidate.type === "stream" && candidate.url === currentCandidate.url) {
+			if (liveCandidate !== null && liveCandidate.type === "stream" && candidate.url === liveCandidate.url) {
 				foundLiveMediaItem = true;
 				break;
 			}
@@ -94,12 +95,12 @@ function liveStreamCheck() {
 		}
 		if (!foundLiveMediaItem) {
 			if (newCandidate !== null) {
-				// queue the live stream and switch to it
+				// queue the live stream
 				console.log("Queueing live stream to play on next switch.");
-				queuedCandidate = newCandidate;
+				queue.unshift(newCandidate);
 				loadNextItem();
 			}
-			else if (currentCandidate !== null && currentCandidate.type === "stream") {
+			else if (liveCandidate !== null && liveCandidate.type === "stream") {
 				// stream has ended
 				console.log("Live stream has ended so loading next item.");
 				loadNextItem();
@@ -129,7 +130,7 @@ function refillQueue(callback) {
 		if (randomise) {
 			shuffle(candidates);
 		}
-		queue = candidates;
+		queue = queue.concat(candidates);
 		newMediaItemIds = [];
 		if (callback) {
 			callback();
@@ -190,65 +191,103 @@ function createCandidateFromMediaItem(mediaItem, type) {
 	};
 }
 
-function fillQueueIfNecessary(callback) {
-	if (queue.length > 0) {
-		callback();
-	}
-	else {
-		console.log("Queue empty. Refilling...");
-		refillQueue(callback);
-	}
-}
+
 
 // get the next item off the queue and play it
 function loadNextItem() {
-	if (currentCandidate !== null) {
-		// loadNextItem will be called again when the player is killed
-		if (killSent) {
+	if (queue.length === 0) {
+		// if there's something playing stop it.
+		loadCandidate(null);
+		
+		if (refillingQueue) {
+			// loadNextItem will be called when the queue is refilled
 			return;
 		}
-		killSent = true;
-		killPlayer();
-		return;
-	}
-	
-	console.log("Loading next item...");
-	fillQueueIfNecessary(function() {
 		
-		var candidate = null;
-		
-		if (queuedCandidate !== null) {
-			// there is one set to play next so pick that one
-			candidate = queuedCandidate;
-			queuedCandidate = null;
-		}
-		else {
+		refillingQueue = true;
+		refillQueue(function() {
+			refillingQueue = false;
 			if (queue.length === 0) {
-				console.log("Nothing to switch to, queue is empty. Trying again shortly.");
+				console.log("Couldn't find anything to add to the queue. Checking again shortly.");
 				setTimeout(function() {
-					loadNextItem();
+					if (liveCandidate === null) {
+						loadNextItem();
+					}
 				}, 5000);
-				return;
 			}
-			candidate = queue.shift();
-		}
-		
-		// check this candidate is still available and valid
-		var requestUrl = playlistId !== null ? "playlists/"+playlistId+"/mediaItems/"+candidate.mediaItem.id : "mediaItems/"+candidate.mediaItem.id;
-		apiRequest(requestUrl, function(data) {
-			console.log("Checking next item is still a valid option.");
-			var mediaItem = playlistId !== null ? data.data : data.data.mediaItem;
-			if (!isMediaItemValid(mediaItem, candidate.type)) {
-				console.log("Item no longer valid. Skipping...");
+			else if (liveCandidate === null) {
+				// load the next item if there's still nothing playing
+				// a live stream could have been added to the front.
 				loadNextItem();
 			}
-			else {
-				console.log("Item valid.");
-				currentCandidate = candidate;
-				playItem(candidate.url, candidate.type);
-			}
 		});
-	});
+	}
+	else {
+		loadCandidate(queue.shift());
+	}
+}
+	
+// load and play the provided candidate.
+// if the candidate is null playback will just be stopped.
+function loadCandidate(candidate) {
+	liveCandidate = candidate;
+	updatePlayer();
+
+	function updatePlayer() {
+		if (updatingPlayer) {
+			return;
+		}
+		updatingPlayer = true;
+		
+		console.log("Loading next item...");
+		if (handle !== null) {
+			// there is currently something playing.
+			// kill it. This will then trigger the close calback when the process ends, and this
+			// will then call the callback below, which will then move into updatePlayerPt2 function
+			playerProcessCloseCallback = function() {
+				updatePlayerPt2();
+			};
+			killPlayer();
+		}
+		else {
+			updatePlayerPt2();
+		}
+		
+		function updatePlayerPt2() {
+			if (liveCandidate === null) {
+				console.log("There is no item to load.");
+				updatingPlayer = false;
+				return;
+			}
+			
+			var candidate = liveCandidate;
+			// check this candidate is still available and valid
+			var requestUrl = playlistId !== null ? "playlists/"+playlistId+"/mediaItems/"+candidate.mediaItem.id : "mediaItems/"+candidate.mediaItem.id;
+			apiRequest(requestUrl, function(data) {
+				
+				if (candidate !== liveCandidate) {
+					// the candidate to play next has changed whilst the api request was taking place.
+					// make the request again with the new candidate
+					updatePlayerPt2();
+				}
+				else {
+					liveCandidate = null;
+					updatingPlayer = false;
+					
+					console.log("Checking next item is still a valid option.");
+					var mediaItem = playlistId !== null ? data.data : data.data.mediaItem;
+					if (!isMediaItemValid(mediaItem, candidate.type)) {
+						console.log("Item no longer valid.");
+						loadNextItem();
+					}
+					else {
+						console.log("Item valid.");
+						playItem(candidate.url, candidate.type);
+					}
+				}
+			});
+		}
+	}
 }
 
 function playItem(url, type) {
@@ -267,16 +306,18 @@ function playItem(url, type) {
 	// play item
 	handle = spawn("omxplayer", commandArgs);
 	var closeEventHandled = false;
+	playerProcessCloseCallback = function() {
+		loadNextItem();
+	};
+	
 	handle.on("close", function() {
 		if (closeEventHandled) {
 			return;
 		}
 		closeEventHandled = true;
 		handle = null;
-		currentCandidate = null;
-		killSent = false;
 		killPlayer(); // just to be certain
-		loadNextItem();
+		playerProcessCloseCallback();
 	});
 }
 

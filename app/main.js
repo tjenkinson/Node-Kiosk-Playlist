@@ -311,6 +311,9 @@ function playItem(url, type) {
 	
 	// play item
 	handle = spawn("omxplayer", commandArgs);
+	// to try and prevent memory leak
+	handle.stdout.resume();
+	handle.stderr.resume();
 	var closeEventHandled = false;
 	playerProcessCloseCallback = function() {
 		loadNextItem();

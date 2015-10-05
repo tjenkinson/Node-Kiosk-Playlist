@@ -174,9 +174,21 @@ function createCandidateFromMediaItem(mediaItem, type) {
 				if (item.quality.id === proposedQualityId) {
 					for(var j=0; j<item.urls.length; j++) {
 						var urlInfo = item.urls[j];
-						if ((type === "video" && urlInfo.type === "video/mp4") || (type === "stream" && urlInfo.type === "application/x-mpegURL")) {
-							chosenUrl = urlInfo.url;
-							break;
+						if (type === "video") {
+							if (urlInfo.type === "application/x-mpegURL") {
+								chosenUrl = urlInfo.url;
+								// break here so that hls urls take precedence
+								break;
+							}
+							else if (urlInfo.type === "video/mp4") {
+								chosenUrl = urlInfo.url;
+							}
+						}
+						else if (type === "stream") {
+							if (urlInfo.type === "application/x-mpegURL") {
+								chosenUrl = urlInfo.url;
+								break;
+							}
 						}
 					}
 				}

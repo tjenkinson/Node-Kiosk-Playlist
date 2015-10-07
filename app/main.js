@@ -3,6 +3,8 @@ if (process.argv.length < 5) { // first element in array is "node", second is pa
 	process.exit(1);
 }
 
+startPeriodicGarbageCollection();
+
 var apiBaseUrl = "https://www.la1tv.co.uk/api/v1";
 
 var request = require('request');
@@ -344,6 +346,18 @@ function playItem(url, type) {
 
 function killPlayer() {
 	exec('pkill omxplayer');
+}
+
+function startPeriodicGarbageCollection() {
+	if (global.gc) {
+		console.log("Performing garbage collection every 5 seconds.");
+		setInterval(function() {
+			// this will force garbage collection to run
+			// fixed memory leak issue when running on a pi
+			// In order for this to work the "--expose-gc" paramater must be added to the command
+			global.gc();
+		}, 5000);
+	}
 }
 
 function shuffle(array) {

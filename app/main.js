@@ -285,7 +285,6 @@ function loadCandidate(candidate) {
 					updatePlayerPt2();
 				}
 				else {
-					liveCandidate = null;
 					updatingPlayer = false;
 					console.log("Checking next item is still a valid option.");
 					var mediaItem = null;
@@ -326,6 +325,7 @@ function playItem(url, type) {
 	handle.stderr.resume();
 	var closeEventHandled = false;
 	playerProcessCloseCallback = function() {
+		liveCandidate = null;
 		loadNextItem();
 	};
 	

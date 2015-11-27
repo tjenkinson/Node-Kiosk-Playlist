@@ -1,20 +1,29 @@
-if (process.argv.length < 5) { // first element in array is "node", second is path
-	console.error("You need the following parameters: apiKey qualityIds randomise (playlistId)");
+var request = require('request');
+var spawn = require('child_process').spawn;
+var exec = require('child_process').exec;
+var fs = require('fs');
+
+if (process.argv.length < 3) { // first element in array is "node", second is path
+	console.error("You need the following parameters: apiKey (configFileLocation)");
 	process.exit(1);
 }
 
 startPeriodicGarbageCollection();
 
-var apiBaseUrl = "https://www.la1tv.co.uk/api/v1";
+var configLocation = "./config.json";
+if (process.argv.length >= 4) { // first element in array is "node", second is path
+	configLocation = process.argv[3];
+}
+var config = JSON.parse(fs.readFileSync(configLocation, 'utf8'));
+if (!config.apiBaseUrl) {
+	config.apiBaseUrl ="https://www.la1tv.co.uk/api/v1";
+}
 
-var request = require('request');
-var spawn = require('child_process').spawn;
-var exec = require('child_process').exec;
-
+var apiBaseUrl = config.apiBaseUrl;
 var apiKey = process.argv[2];
-var qualityIds = process.argv[3].split(",").map(function(a){return parseInt(a);});
-var randomise = process.argv[4] === "1";
-var playlistId = process.argv.length > 5 ? process.argv[5] : null;
+var qualityIds = config.qualityIds;
+var randomise = config.randomise;
+var playlistId = config.playlistId;
 
 // array of {mediaItem, url, type}
 // items at the front of the array are popped off and played

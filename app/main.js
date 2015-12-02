@@ -334,8 +334,18 @@ function playItem(url, type) {
 	handle.stderr.resume();
 	var closeEventHandled = false;
 	playerProcessCloseCallback = function() {
-		liveCandidate = null;
-		loadNextItem();
+		if (type === "stream") {
+			// here because a stream just ended/lost connection
+			// try and load the stream again
+			// when the stream has actually been marked as over in the CMS
+			// loadNextItem() will be called from liveStreamCheck()
+			console.log("Stream terminated. Attempting to load again.");
+			playItem(url, type);
+		}
+		else {
+			liveCandidate = null;
+			loadNextItem();
+		}
 	};
 	
 	handle.on("close", function() {

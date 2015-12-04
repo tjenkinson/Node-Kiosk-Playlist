@@ -24,6 +24,7 @@ var apiKey = process.argv[2];
 var qualityIds = config.qualityIds;
 var randomise = config.randomise;
 var playlistId = config.playlistId;
+var blacklistedIds = config.blacklistedIds || [];
 
 // array of {mediaItem, url, type}
 // items at the front of the array are popped off and played
@@ -95,11 +96,11 @@ function liveStreamCheck() {
 		
 		for(var i=0; i<mediaItems.length; i++) {
 			var mediaItem = mediaItems[i];
-			if (mediaItem.liveStream === null || mediaItem.liveStream.state !== "LIVE") {
+			var candidate = createCandidateFromMediaItem(mediaItem, "stream");
+			if (!candidate) {
 				continue;
 			}
-			
-			var candidate = createCandidateFromMediaItem(mediaItem, "stream");
+
 			if (liveCandidate !== null && liveCandidate.type === "stream" && candidate.url === liveCandidate.url) {
 				foundLiveMediaItem = true;
 				break;
@@ -160,12 +161,20 @@ function isMediaItemValid(mediaItem, type) {
 	return type === "video" ? mediaItem.vod !== null && mediaItem.vod.available : mediaItem.liveStream !== null && mediaItem.liveStream.state === "LIVE";
 }
 
+function isMediaItemAllowed(mediaItem) {
+	return blacklistedIds.indexOf(mediaItem.id) === -1;
+}
+
 function createCandidateFromMediaItem(mediaItem, type) {
 	if (type !== "video" && type !== "stream") {
 		throw "Invalid item type.";
 	}
 	
 	if (!isMediaItemValid(mediaItem, type)) {
+		return null;
+	}
+
+	if (!isMediaItemAllowed(mediaItem)) {
 		return null;
 	}
 	

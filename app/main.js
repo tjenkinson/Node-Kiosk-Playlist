@@ -25,6 +25,7 @@ var qualityIds = config.qualityIds;
 var randomise = config.randomise;
 var playlistId = config.playlistId;
 var blacklistedIds = config.blacklistedIds || [];
+var whitelistedStreamIds = config.whitelistedStreamIds || null;
 
 // array of {mediaItem, url, type}
 // items at the front of the array are popped off and played
@@ -85,6 +86,10 @@ function apiRequest(url, callback) {
 	});
 }
 
+function isStreamWhitelisted(liveStream) {
+	return !whitelistedStreamIds || whitelistedStreamIds.indexOf(liveStream.liveStreamId) !== -1; 
+}
+
 // check if something's live, and if it is add it to the front of the queue and switch to it.
 function liveStreamCheck() {
 	console.log("Checking for live streams.");
@@ -97,7 +102,7 @@ function liveStreamCheck() {
 		for(var i=0; i<mediaItems.length; i++) {
 			var mediaItem = mediaItems[i];
 			var candidate = createCandidateFromMediaItem(mediaItem, "stream");
-			if (!candidate) {
+			if (!candidate || !isStreamWhitelisted(candidate.mediaItem.liveStream)) {
 				continue;
 			}
 

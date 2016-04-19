@@ -15,6 +15,7 @@ cp start.sh $HOME/app/start.sh
 chmod +x $HOME/app/start.sh
 echo "module.exports='$2';" > $HOME/app/api-key.js
 echo "CONFIG_URL='$1'" > $HOME/app/start_config
+cp bootstrap.js $HOME/app/bootstrap.js
 
 wget https://nodejs.org/dist/v4.4.3/node-v4.4.3-linux-`uname -m`.tar.gz
 tar -xvf node-v4.4.3-linux-`uname -m`.tar.gz 
@@ -22,7 +23,7 @@ cd node-v4.4.3-linux-`uname -m`
 sudo cp -R * /usr/local/
 sudo ln -s /usr/local/bin/node /usr/local/bin/nodejs
 cd ..
-rm -rf node-v4.4.3-linux-`uname -m`
+rm -rf node-v4.4.3-linux-`uname -m`*
 
 nodejs -v
 npm -v

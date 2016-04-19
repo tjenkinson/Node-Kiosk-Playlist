@@ -22,6 +22,7 @@ cd node-v4.4.3-linux-`uname -m`
 sudo cp -R * /usr/local/
 sudo ln -s /usr/local/bin/node /usr/local/bin/nodejs
 cd ..
+rm -rf node-v4.4.3-linux-`uname -m`
 
 nodejs -v
 npm -v

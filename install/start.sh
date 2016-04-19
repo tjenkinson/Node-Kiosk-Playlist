@@ -1,5 +1,4 @@
 #!/bin/bash
-# expects config file location as the first argument
 
 echo Loading...
 cd /home/pi/app

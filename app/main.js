@@ -340,6 +340,10 @@ function playItem(url, type) {
 	else {
 		throw "Invalid item type.";
 	}
+
+	// force audio over hdmi
+	commandArgs.push("-o");
+	commandArgs.push("hdmi");
 	
 	// play item
 	handle = spawn("omxplayer", commandArgs);

@@ -8,6 +8,7 @@ set -e
 sudo apt-get update -y
 sudo apt-get install -y
 sudo apt-get upgrade -y
+sudo apt-get install -y upstart
 sudo apt-get install -y omxplayer
 
 mkdir $HOME/app
@@ -28,9 +29,7 @@ rm -rf node-v4.4.3-linux-`uname -m`*
 nodejs -v
 npm -v
 
-sudo cp pi-kiosk.sh /etc/init.d/pi-kiosk
-sudo chmod +x /etc/init.d/pi-kiosk
-sudo update-rc.d pi-kiosk defaults
+sudo cp pi-kiosk.conf /etc/init/pi-kiosk.conf
 
 sudo cp reboot.sh /etc/cron.daily/reboot.sh
 sudo chmod +x /etc/cron.daily/reboot.sh

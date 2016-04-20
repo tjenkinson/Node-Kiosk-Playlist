@@ -26,6 +26,7 @@ var randomise = config.randomise;
 var playlistId = config.playlistId;
 var blacklistedIds = config.blacklistedIds || [];
 var whitelistedStreamIds = config.whitelistedStreamIds || null;
+var playLiveStreams = config.playLiveStreams !== false;
 
 // array of {mediaItem, url, type}
 // items at the front of the array are popped off and played
@@ -54,7 +55,7 @@ function initialise() {
 			process.exit(1);
 		}
 		console.log("Initialised!");
-		if (playlistId === null) {
+		if (playLiveStreams) {
 			liveStreamCheck();
 		}
 		loadNextItem();

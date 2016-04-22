@@ -31,8 +31,8 @@ npm -v
 
 sudo cp pi-kiosk.conf /etc/init/pi-kiosk.conf
 
-sudo cp reboot.sh /etc/cron.daily/reboot.sh
-sudo chmod +x /etc/cron.daily/reboot.sh
+sudo cp reboot /etc/cron.daily/reboot
+sudo chmod +x /etc/cron.daily/reboot
 
 echo "Done! Reboot and cross fingers."
 echo "You should run passwd and change the password for 'pi' to something else. You might also want to tweak some settings in 'raspi-config'."

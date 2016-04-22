@@ -23,10 +23,7 @@ var apiBaseUrl = config.apiBaseUrl;
 var apiKey = process.argv[2];
 var qualityIds = config.qualityIds;
 var randomise = config.randomise;
-var playlistIds = config.playlistIds || [];
-if (typeof(config.playlistId) !== "undefined") {
-	playlistIds.unshift(config.playlistId);
-}
+var playlistId = config.playlistId;
 var blacklistedIds = config.blacklistedIds || [];
 var whitelistedStreamIds = config.whitelistedStreamIds || null;
 var playLiveStreams = config.playLiveStreams !== false;
@@ -138,38 +135,20 @@ function liveStreamCheck() {
 
 // populate the queue with items
 function refillQueue(callback) {
-	var requestUrls = [];
-	if (playlistIds.length === 0) {
-		// get most recent
-		requestUrls.push("mediaItems?sortMode=SCHEDULED_PUBLISH_TIME&sortDirection=DESC&vodIncludeSetting=HAS_AVAILABLE_VOD&limit=25");
-	}
-	else {
-		playlistIds.forEach(function(playlistId) {
-			requestUrls.push("playlists/"+playlistId+"/mediaItems");
-		});
-	}
+	var requestUrl = playlistId !== null ? "playlists/"+playlistId+"/mediaItems" : "mediaItems?sortMode=SCHEDULED_PUBLISH_TIME&sortDirection=DESC&vodIncludeSetting=HAS_AVAILABLE_VOD&limit=25";
+	apiRequest(requestUrl, function(data) {
+		var mediaItems = playlistId !== null ? data.data : data.data.mediaItems;
 
-	// to contain all media items which are supported in form {mediaItem, chosenQualityId}
-	var candidates = [];
-
-	var promise = Promise.resolve();
-	requestUrls.forEach(function(requestUrl) {
-		promise.then(new Promise(function(resolve) {
-			apiRequest(requestUrl, function(data) {
-				var mediaItems = playlistIds.length > 0 ? data.data : data.data.mediaItems;
-				for (var i=0; i<mediaItems.length; i++) {
-					var mediaItem = mediaItems[i];
-					var candidate = createCandidateFromMediaItem(mediaItem, "video");	
-					if (candidate !== null) {
-						candidates.push(candidate);
-					}
-				}
-				resolve();
-			});
-		});
-	});
-
-	promise.then(function() {
+		// to contain all media items which are supported in form {mediaItem, chosenQualityId}
+		var candidates = [];
+		for (var i=0; i<mediaItems.length; i++) {
+			var mediaItem = mediaItems[i];
+			var candidate = createCandidateFromMediaItem(mediaItem, "video");
+			
+			if (candidate !== null) {
+				candidates.push(candidate);
+			}
+		}
 		if (randomise) {
 			shuffle(candidates);
 		}
@@ -321,7 +300,7 @@ function loadCandidate(candidate) {
 			
 			var candidate = liveCandidate;
 			// check this candidate is still available and valid
-			var requestUrl = "mediaItems/"+candidate.mediaItem.id;
+			var requestUrl = playlistId !== null ? "playlists/"+playlistId+"/mediaItems/"+candidate.mediaItem.id : "mediaItems/"+candidate.mediaItem.id;
 			apiRequest(requestUrl, function(data) {
 				
 				if (candidate !== liveCandidate) {
@@ -334,7 +313,7 @@ function loadCandidate(candidate) {
 					console.log("Checking next item is still a valid option.");
 					var mediaItem = null;
 					if (data !== null) {
-						mediaItem = data.data.mediaItem;
+						mediaItem = playlistId !== null ? data.data : data.data.mediaItem;
 					}
 					if (mediaItem === null || !isMediaItemValid(mediaItem, candidate.type)) {
 						console.log("Item no longer valid.");

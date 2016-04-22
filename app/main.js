@@ -27,6 +27,7 @@ var playlistIds = config.playlistIds || [];
 if (typeof(config.playlistId) !== "undefined" && config.playlistId !== null) {
 	playlistIds.unshift(config.playlistId);
 }
+var mediaItemIds = config.mediaItemIds || [];
 var blacklistedIds = config.blacklistedIds || [];
 var whitelistedStreamIds = config.whitelistedStreamIds || null;
 var playLiveStreams = config.playLiveStreams !== false;
@@ -139,11 +140,12 @@ function liveStreamCheck() {
 // populate the queue with items
 function refillQueue(callback) {
 	var requestUrls = [];
-	if (playlistIds.length === 0) {
+	if (playlistIds.length === 0 && mediaItemIds.length === 0) {
 		// get most recent
 		requestUrls.push("mediaItems?sortMode=SCHEDULED_PUBLISH_TIME&sortDirection=DESC&vodIncludeSetting=HAS_AVAILABLE_VOD&limit=25");
 	}
-	else {
+	
+	if (playlistIds.length > 0) {
 		playlistIds.forEach(function(playlistId) {
 			requestUrls.push("playlists/"+playlistId+"/mediaItems");
 		});
@@ -173,6 +175,24 @@ function refillQueue(callback) {
 			})
 		});
 	});
+
+	if (mediaItemIds) {
+		mediaItemIds.forEach(function(mediaItemId) {
+			promise = promise.then(function() {
+				return new Promise(function(resolve) {
+					apiRequest("mediaItems/"+mediaItemId, function(data) {
+						if (data) {
+							var candidate = createCandidateFromMediaItem(data.data.mediaItem, "video");
+							if (candidate !== null) {
+								candidates.push(candidate);
+							}
+						}
+						resolve();
+					});
+				});
+			});
+		});
+	}
 
 	promise.then(function() {
 		if (randomise) {

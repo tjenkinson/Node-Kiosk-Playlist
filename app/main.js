@@ -166,7 +166,7 @@ function refillQueue(callback) {
 				}
 				resolve();
 			});
-		});
+		}));
 	});
 
 	promise.then(function() {

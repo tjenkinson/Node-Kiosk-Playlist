@@ -16,6 +16,6 @@
     "email": "tjcode@outlook.com"
   },
   "dependencies": {
-    "request": "^2.56.0"
+    "request": "^2.81.0"
   }
 }
